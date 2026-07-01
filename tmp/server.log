@@ -1,0 +1,31 @@
+2026-06-27 16:50:10 - 0.9.4_00000000000000 - core.providers.asr.fun_local - INFO - core.providers.asr.fun_local - funasr version: 1.2.7.
+2026-06-27 16:50:10 - 0.9.4_00000000000000 - app - INFO - app - ASR 加载成功: FunASR
+2026-06-27 16:50:10 - 0.9.4_00000000000000 - app - ERROR - app - LLM 加载失败: 找不到模块 core.providers.llm.chatglmllm: No module named 'core.providers.llm.chatglmllm'
+2026-06-27 16:50:10 - 0.9.4_00000000000000 - app - ERROR - app - TTS 加载失败: 找不到模块 core.providers.tts.edgetts: No module named 'core.providers.tts.edgetts'
+2026-06-27 16:50:10 - 0.9.4_00000000000000 - app - ERROR - app - LLM 是必须组件，启动失败
+2026-06-27 16:51:59 - 0.9.4_00000000000000 - core.providers.asr.fun_local - INFO - core.providers.asr.fun_local - funasr version: 1.2.7.
+2026-06-27 16:51:59 - 0.9.4_00000000000000 - app - INFO - app - ASR 加载成功: FunASR
+2026-06-27 16:51:59 - 0.9.4_00000000000000 - app - ERROR - app - LLM 加载失败: 找不到模块 core.providers.llm.chatglmllm: No module named 'core.providers.llm.chatglmllm'
+2026-06-27 16:51:59 - 0.9.4_00000000000000 - app - ERROR - app - TTS 加载失败: 找不到模块 core.providers.tts.edgetts: No module named 'core.providers.tts.edgetts'
+2026-06-27 16:51:59 - 0.9.4_00000000000000 - app - ERROR - app - LLM 是必须组件，启动失败
+2026-06-27 17:00:24 - 0.9.4_00000000000000 - core.providers.asr.fun_local - INFO - core.providers.asr.fun_local - funasr version: 1.2.7.
+2026-06-27 17:00:24 - 0.9.4_00000000000000 - app - INFO - app - ASR 初始化完成: FunASR
+2026-06-27 17:02:16 - 0.9.4_00000000000000 - core.utils.gc_manager - INFO - core.utils.gc_manager - 启动全局GC管理器，间隔300秒
+2026-06-27 17:02:17 - 0.9.4_00000000000000 - core.utils.modules_initialize - INFO - core.utils.modules_initialize - 初始化组件: llm成功 ChatGLMLLM
+2026-06-27 17:02:17 - 0.9.4_00000000000000 - core.utils.modules_initialize - INFO - core.utils.modules_initialize - 初始化组件: intent成功 function_call
+2026-06-27 17:02:17 - 0.9.4_00000000000000 - core.utils.modules_initialize - INFO - core.utils.modules_initialize - 初始化组件: memory成功 nomem
+2026-06-27 17:02:17 - 0.9.4_00000000000000 - core.providers.vad.silero - INFO - core.providers.vad.silero - SileroVAD
+2026-06-27 17:02:17 - 0.9.4_00000000000000 - core.utils.modules_initialize - INFO - core.utils.modules_initialize - 初始化组件: vad成功 SileroVAD
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - core.providers.asr.fun_local - INFO - core.providers.asr.fun_local - funasr version: 1.2.7.
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - core.utils.modules_initialize - INFO - core.utils.modules_initialize - ASR模块初始化完成
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - core.utils.modules_initialize - INFO - core.utils.modules_initialize - 初始化组件: asr成功 FunASR
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - __main__ - INFO - __main__ - OTA接口是		http://10.46.64.137:8003/xiaozhi/ota/
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - __main__ - INFO - __main__ - 视觉分析接口是	http://10.46.64.137:8003/mcp/vision/explain
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - __main__ - INFO - __main__ - Websocket地址是	ws://10.46.64.137:8000/xiaozhi/v1/
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - __main__ - INFO - __main__ - =======上面的地址是websocket协议地址，请勿用浏览器访问=======
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - __main__ - INFO - __main__ - 如想测试websocket请启动digital-human模块，打开浏览器交互测试
+2026-06-27 17:02:25 - 0.9.4_00000000000000 - __main__ - INFO - __main__ - =============================================================
+
+2026-06-27 17:05:07 - 0.9.4_00000000000000 - core.utils.gc_manager - INFO - core.utils.gc_manager - 停止全局GC管理器
+2026-06-27 17:05:07 - 0.9.4_00000000000000 - core.utils.gc_manager - INFO - core.utils.gc_manager - GC循环任务被取消
+2026-06-27 17:05:07 - 0.9.4_00000000000000 - core.utils.gc_manager - INFO - core.utils.gc_manager - GC循环任务已退出
