@@ -1,6 +1,7 @@
 # 小智FastAPI 部署指南
 1. 系统结构图
 <img width="563" height="569" alt="image" src="https://github.com/user-attachments/assets/4e617485-7ab0-4423-be8d-a90613e03c96" />
+
 ● 客户端：通过 HTTP/HTTPS 发送 POST 请求到 /ask，可携带文本或音频文件。
 ● FastAPI 应用：核心逻辑，集成三个外部 AI 服务。
 ● 外部服务：DeepSeek（LLM）、豆包（ASR）、腾讯云（TTS），均通过 API 调用。
