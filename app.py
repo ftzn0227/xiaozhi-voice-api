@@ -5,6 +5,7 @@
 - 提供 /ask 接口：支持文本或语音输入，返回文本或合成语音
 """
 import os
+import traceback
 import uuid
 import tempfile
 from io import BytesIO
@@ -18,6 +19,11 @@ from pydantic import BaseModel
 import httpx
 from contextlib import asynccontextmanager
 
+from typing import Dict, List
+
+from config import load_config
+from intent_router import classify_intent, multi_step_qa, get_suggestions
+from conversation import ConversationMemory
 # ---------- 抽象业务接口 ----------
 class BaseASR:
     async def transcribe(self, audio_data: bytes) -> str:
@@ -66,20 +72,21 @@ class DoubaoASR(BaseASR):
                 raise Exception(f"豆包 ASR 错误: {result.get('message')}")
 
 class DeepSeekQA(BaseQA):
+    # 添加历史对话
     def __init__(self, api_key: str, model: str = "deepseek-chat", system_prompt: str = "你是一个有用的助手"):
         self.api_key = api_key
         self.model = model
         self.system_prompt = system_prompt
         self.url = "https://api.deepseek.com/v1/chat/completions"
 
-    async def ask(self, question: str, context: Optional[str] = None) -> str:
+    async def ask(self, question: str, history: List[dict] = None) -> str:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
         messages = [{"role": "system", "content": self.system_prompt}]
-        if context:
-            messages.append({"role": "user", "content": context})
+        if history:
+            messages.extend(history)
         messages.append({"role": "user", "content": question})
 
         payload = {
@@ -124,34 +131,6 @@ class TencentTTS(BaseTTS):
         # 返回音频数据（Base64 解码）
         audio_data = base64.b64decode(resp.Audio)
         return audio_data
-# ---------- 配置加载 ----------
-def load_config() -> dict:
-    """从环境变量加载 DeepSeek / 豆包 / 腾讯云配置"""
-    from dotenv import load_dotenv
-    load_dotenv()
-    return {
-        "deepseek": {
-            "api_key": os.getenv("DEEPSEEK_API_KEY", ""),
-            "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
-            "system_prompt": os.getenv("SYSTEM_PROMPT", "你是一个有用的助手"),
-        },
-        "doubao": {
-            "app_id": os.getenv("DOUBAO_APP_ID", ""),
-            "access_token": os.getenv("DOUBAO_ACCESS_TOKEN", ""),
-            "cluster": os.getenv("DOUBAO_CLUSTER", "volcengine_streaming"),
-        },
-        "tencent": {
-            "secret_id": os.getenv("TENCENT_SECRET_ID", ""),
-            "secret_key": os.getenv("TENCENT_SECRET_KEY", ""),
-            "voice_type": int(os.getenv("TENCENT_VOICE_TYPE", "1001")),  # 智瑜
-            "codec": os.getenv("TENCENT_CODEC", "mp3"),
-        },
-        "server": {
-            "host": os.getenv("HOST", "0.0.0.0"),
-            "port": int(os.getenv("PORT", "8003")),
-        },
-    }
-
 # ---------- 工具函数 ----------
 def check_ffmpeg() -> bool:
     """检查 ffmpeg 是否可用（处理音频转换需要，非强制）"""
@@ -209,46 +188,70 @@ class AskResponse(BaseModel):
     answer: str
     format: str = "text"
 
-@app.post("/ask")
-async def ask_endpoint(
-    text: Optional[str] = Form(None, description="文本输入"),
-    audio: Optional[UploadFile] = File(None, description="语音输入（WAV/MP3）"),
-    response_format: Optional[str] = Form("text", description="输出格式：text 或 audio"),
-    voice: Optional[str] = Form("alloy", description="TTS 声音（仅 audio 格式有效）"),
+memory = ConversationMemory(max_history=10, ttl=3600)
+@app.post("/ask")   # 兼容老接口
+@app.post("/chat")  # 新接口
+async def chat(
+    text: Optional[str] = Form(None),
+    audio: Optional[UploadFile] = File(None),
+    session_id: Optional[str] = Form(None),
+    response_format: str = Form("text"),
+    voice: str = Form("alloy"),
 ):
-    """
-    统一问答接口：
-    - 若提供 audio 文件，进行语音识别 -> QA -> 按需合成语音
-    - 若仅提供 text，直接 QA
-    - response_format=audio 时返回合成语音（mp3），否则返回 JSON 文本
-    """
-    # 至少需要一种输入
-    if not text and not audio:
-        raise HTTPException(status_code=400, detail="请提供 text 或 audio 输入")
-
-    # 1. 处理输入，获取提问文本
-    question = ""
+    # --- 1. 提取问题文本 ---
     if audio:
-        # 读取上传的音频文件
         audio_bytes = await audio.read()
-        # 可选: 用 ffmpeg 统一转成 16k mono wav，这里假设 asr 引擎能处理原始格式
         question = await asr_engine.transcribe(audio_bytes)
-    if text:
-        # 如果同时提供了两者，以 audio 识别结果为准，也可拼接，这里直接覆盖
-        question = text if not question else question
-
-    if not question.strip():
-        raise HTTPException(status_code=400, detail="未能从输入中提取有效文本")
-
-    # 2. 获取答案
-    answer = await qa_engine.ask(question)
-
-    # 3. 根据输出格式返回
-    if response_format == "audio":
-        audio_data = await tts_engine.synthesize(answer, voice=voice)
-        return Response(content=audio_data, media_type="audio/mpeg")
+    elif text:
+        question = text.strip()
     else:
-        return JSONResponse(content={"answer": answer, "format": "text"})
+        raise HTTPException(400, "请提供 text 或 audio")
+
+    # --- 2. 会话处理 ---
+    if not session_id:
+        session_id = str(uuid.uuid4())
+
+    history = memory.get_history(session_id)
+
+    # --- 3. 意图分类 ---
+    try:
+        intent_info = await classify_intent(question)
+    except Exception as e:
+        print(f"意图分类失败: {e}")
+        print(f"意图分类失败详情: {traceback.format_exc()}")
+        intent_info = {"intent": "simple_qa", "reason": "error"}
+
+    # --- 4. 按意图处理 ---
+    plan = None
+    if intent_info["intent"] == "multi_step":
+        result = await multi_step_qa(question, history)
+        answer = result["answer"]
+        plan = result.get("plan")
+    else:
+        answer = await qa_engine.ask(question, history)
+
+    # --- 5. 更新记忆 ---
+    memory.add_message(session_id, "user", question)
+    memory.add_message(session_id, "assistant", answer)
+
+    # --- 6. 推荐问题 ---
+    suggestions = await get_suggestions(history, answer) if config.get("enable_suggestions") else []
+
+    # --- 7. 构建响应 ---
+    if response_format == "audio":
+        audio_content = await tts_engine.synthesize(answer, voice=voice)
+        return Response(content=audio_content, media_type="audio/mpeg")
+    else:
+        resp_dict = {
+            "session_id": session_id,
+            "answer": answer,
+            "intent": intent_info["intent"],
+        }
+        if plan:
+            resp_dict["plan"] = plan
+        if suggestions:
+            resp_dict["suggestions"] = suggestions
+        return JSONResponse(content=resp_dict)
 
 # ---------- 启动入口 ----------
 if __name__ == "__main__":
